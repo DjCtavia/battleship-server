@@ -1,3 +1,4 @@
+const { ServerList, Server } = require('./modules/server/serverlist');
 const express = require('express');
 const http = require('http');
 const socketIo = require('socket.io');
@@ -16,21 +17,15 @@ let numUsersConnected = 0;
 let servers = new Map();
 let clients = [];
 
-io.on('connection', client => {
-    client.on('CreateServer', data => {
-        if (!servers.has(client.id)) {
-            servers.set(client.id, {
-                name: data.name,
-                password: data.pwd,
-                boardSize: data.boardSize,
-            });
-            console.log(`Server created with name "${data.name}" by "${client.id}"`);
-        } else {
-            console.error(`A server has already been created under the name "${servers.get(client.id).name}" by "${client.id}"`);
-        }
+io.on('connection', socket => {
+    socket.on('CreateServer', data => {
+        let nServer = new Server(socket, data.name, data.password);
+        ServerList.servers.set(nServer.id, nServer);
+        console.log(nServer);
+        console.log(ServerList.servers.toString());
     });
 
-    client.on('disconnect', () => {
+    socket.on('disconnect', () => {
         numUsersConnected--;
         console.log(`Users connected: ${numUsersConnected}`);
     });
