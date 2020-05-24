@@ -1,14 +1,28 @@
+const { Socket } = require('socket.io');
 const { io } = require('../globals');
 const { v4: uuidv4 } = require('uuid');
 const REGEXSERVER = /game-[\w\d]{8}-[\w\d]{4}-[\w\d]{4}-[\w\d]{4}-[\w\d]{12}/;
 
+/**
+ * Manage servers list
+ * @class ServerList
+ */
 class ServerList {
+    /**
+     * Construct an instance of ServerList
+     * 
+     * @constructs ServerList
+     */
     constructor() {
+        /** @private */
         this.servers = new Map();
 
         this.refreshInterval = setInterval(this.RefreshServersList.bind(this), 10000);
     }
 
+    /**
+     * @param {Array} rooms
+     */
     GetPlayers({rooms}) {
         if (typeof rooms !== 'object') return undefined;
         const server = this.servers.get(rooms.find(room => room.match(REGEXSERVER)));
@@ -16,7 +30,10 @@ class ServerList {
         return server.players;
     }
 
-    RefreshServersList(client = undefined) {
+    /**
+     * @param {Socket} socket 
+     */
+    RefreshServersList(socket = undefined) {
         let servers = Array();
 
         this.servers.forEach((value, key) => {
@@ -26,31 +43,56 @@ class ServerList {
                 usePassword: value.password !== "" ? true : false,
             });
         });
-        if (typeof emit === 'undefined') io.to('RefreshServersList').emit(servers);
-        if (typeof emit === 'function') client.emit('RefreshServersList', servers);
+        if (!socket) io.to('RefreshServersList').emit(servers);
+        else if (socket instanceof Socket) socket.emit('RefreshServersList', servers);
     }
 }
 
+/**
+ * Base class for servers
+ * @class Server
+ */
 class Server {
+    /**
+     * Construct an instance of Server
+     * 
+     * @param {String} id
+     * @param {String} name
+     * @param {String} password
+     * @constructs Server
+     */
     constructor({id}, name = "default", password = "")
     {
+        /** @private */
         this.id = `game-${uuidv4()}`;
+        /** @private */
         this.name = name;
+        /** @private */
         this.password = password;
+        /** @private */
         this.hoster = id;
+        /** @private */
         this.players = [id];
+        /** @private */
         this.canJoin = true;
     }
 
+    /**
+     * @param {Array} rooms 
+     */
     IsPlayerAlreadyInAGame(rooms) {
         if (typeof rooms !== 'object') return undefined;
         return rooms.some(room => room.match(REGEXSERVER));
     }
 
-    AddPlayer({id: playerId, rooms, join}) {
-        if (this.IsPlayerAlreadyInAGame(rooms)) return;
-        this.players.push(playerId);
-        join(this.id);
+    /**
+    * @param {Socket} socket
+    */
+    AddPlayer(socket) {
+        if (socket instanceof Socket) return;
+        if (this.IsPlayerAlreadyInAGame(socket.rooms)) return;
+        this.players.push(socket.id);
+        socket.join(this.id);
     }
 
     toString()
