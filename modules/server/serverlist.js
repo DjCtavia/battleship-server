@@ -1,10 +1,12 @@
+const { io } = require('../globals');
 const { v4: uuidv4 } = require('uuid');
 const REGEXSERVER = /game-[\w\d]{8}-[\w\d]{4}-[\w\d]{4}-[\w\d]{4}-[\w\d]{12}/;
-
 
 class ServerList {
     constructor() {
         this.servers = new Map();
+
+        this.refreshInterval = setInterval(this.RefreshServersList, 2000);
     }
 
     GetPlayers({rooms}) {
@@ -12,6 +14,19 @@ class ServerList {
         const server = this.servers.get(rooms.find(room => room.match(REGEXSERVER)));
         if (!server) return undefined;
         return server.players;
+    }
+
+    RefreshServersList() {
+        let servers = [];
+
+        this.servers.forEach((value, key) => {
+            servers.push({
+                id: value.id,
+                name: value.name,
+                usePassword: value.password !== "" ? true : false,
+            });
+        });
+        io.to('RefreshServersList').emit(servers);
     }
 }
 
@@ -24,7 +39,6 @@ class Server {
         this.hoster = id;
         this.players = [id];
         this.canJoin = true;
-        console.log(`[Server] UID: ${this.id} | name: ${this.name} | pwd: ${this.password} | Hoster: ${this.hoster}`);
     }
 
     IsPlayerAlreadyInAGame(rooms) {
@@ -37,8 +51,12 @@ class Server {
         this.players.push(playerId);
         join(this.id);
     }
+
+    toString()
+    {
+        return `[Server] UID: ${this.id} | name: ${this.name} | pwd: ${this.password} | Hoster: ${this.hoster}`;
+    }
 }
-Server.prototype.toString = () => `[Server] UID: ${this.id} | name: ${this.name} | pwd: ${this.password} | Hoster: ${this.hoster}`;
 
 const gServerList = new ServerList();
 module.exports = {
