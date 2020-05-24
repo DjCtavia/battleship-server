@@ -6,7 +6,7 @@ class ServerList {
     constructor() {
         this.servers = new Map();
 
-        this.refreshInterval = setInterval(this.RefreshServersList, 2000);
+        this.refreshInterval = setInterval(this.RefreshServersList.bind(this), 10000);
     }
 
     GetPlayers({rooms}) {
@@ -16,8 +16,8 @@ class ServerList {
         return server.players;
     }
 
-    RefreshServersList() {
-        let servers = [];
+    RefreshServersList(client = undefined) {
+        let servers = Array();
 
         this.servers.forEach((value, key) => {
             servers.push({
@@ -26,7 +26,8 @@ class ServerList {
                 usePassword: value.password !== "" ? true : false,
             });
         });
-        io.to('RefreshServersList').emit(servers);
+        if (typeof emit === 'undefined') io.to('RefreshServersList').emit(servers);
+        if (typeof emit === 'function') client.emit('RefreshServersList', servers);
     }
 }
 
