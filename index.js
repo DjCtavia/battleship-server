@@ -1,4 +1,5 @@
 const { io } = require('./modules/globals');
+const { ServerList } = require('./modules/server/serverlist');
 
 let numUsersConnected = 0;
 let servers = new Map();
@@ -25,5 +26,3 @@ io.on('connection', client => {
     numUsersConnected++;
     console.log(`Users connected: ${numUsersConnected}`);
 });
-
-server.listen(PORT, () => console.log(`Listening port ${PORT}`));
