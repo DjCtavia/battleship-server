@@ -1,17 +1,5 @@
-const { ServerList, Server } = require('./modules/server/serverlist');
-const express = require('express');
-const http = require('http');
-const socketIo = require('socket.io');
-
-// Config
-const PORT = 3001;
-const INDEX = require("./routes/index");
-// Express init
-const app = express();
-app.use(INDEX);
-// Socket Io init
-const server = http.createServer(app);
-const io = socketIo(server);
+const { io } = require('./modules/globals');
+const { ServerList } = require('./modules/server/serverlist');
 
 let numUsersConnected = 0;
 let servers = new Map();
@@ -32,5 +20,3 @@ io.on('connection', socket => {
     numUsersConnected++;
     console.log(`Users connected: ${numUsersConnected}`);
 });
-
-server.listen(PORT, () => console.log(`Listening port ${PORT}`));
