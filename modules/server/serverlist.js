@@ -21,12 +21,20 @@ class ServerList {
     }
 
     /**
-     * 
-     * @param {Number} amount Number of servers to be retrieved
-     * @param {Number} at Where the slice should start
+     * @param {Number} amount Number of servers to get
+     * @param {Number} at Position from the list start to get servers
+     * @param {Socket} socket Client asking for servers
      */
-    getServers(amount, at = 0) {
-        return this.servers.slice(at, at + amount);
+    getServers({amount, at = 0}, socket) {
+        let servers = this.servers.slice(at, at + amount).map(server => {
+            return {
+                id: server.id,
+                name: server.name,
+                usePassword: server.password !== "" ? true : false
+            }
+        });
+
+        socket.emit('GetServersList', servers);
     }
 
     /**
@@ -56,11 +64,27 @@ class ServerList {
         else if (socket instanceof Socket) socket.emit('refreshServersList', servers);
     }
 
+    /**
+     * @param {String} serverId
+     * @param {Socket} socket
+     */
     joinServer(serverId, socket) {
         let server = this.servers.get(serverId);
         
         if (!server) return;
         server.join(socket);
+    }
+
+    /**
+     * @param {Socket} socket
+     */
+    leaveServer(socket) {
+        if (!socket) return;
+        const serverId = socket.rooms.find(room => room.match(REGEXSERVER));
+        if (!serverId) return;
+        const server = this.servers.get(serverId);
+        if (!server) return;
+        server.removePlayer(socket);
     }
 }
 
@@ -111,6 +135,19 @@ class Server {
         socket.join(this.id);
     }
 
+    /**
+     * @param {Socket} socket
+     */
+    removePlayer(socket) {
+        if (!socket) return;
+        let indexOfPlayer = this.players.indexOf(socket.id);
+        if (indexOfPlayer < 0) return;
+        this.players.splice(indexOfPlayer, 1);
+    }
+
+    /**
+     * @param {Socket} socket
+     */
     join(socket) {
         if (!socket) return;
         if (!isPlayerAlreadyInAGame(socket.rooms)) return;
@@ -132,12 +169,15 @@ class Server {
  */
 function listenServerList(socket) {
     socket
-        .once('InitServerList', () => socket.emit('InitServerList', gServerList.getServers(10)))
-        .on('JoinServer', (data) => gServerList.joinServer(data));
+        .on('InitServerList', () => gServerList.getServers({amount: 10}, socket))
+        .on('GetServersList', data => gServerList.getServers(data, socket))
+        .on('JoinServer', data => gServerList.joinServer(data, socket))
+        .on('LeaveServer', data => gServerList.leaveServer(socket));
 }
 
 const gServerList = new ServerList();
 module.exports = {
     ServerList: gServerList,
-    Server
+    Server,
+    listenServerList
 };
