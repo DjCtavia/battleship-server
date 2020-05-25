@@ -17,7 +17,20 @@ class ServerList {
         /** @private */
         this.servers = new Map();
 
-        this.refreshInterval = setInterval(this.refreshServersList.bind(this), 10000);
+        this.servers.set('DjCtavia', new Server('DjCtavia', "Dope serv", ""));
+        this.servers.set('DanceOfJesus', new Server('DanceOfJesus', "T'as cru quoi", "tree"));
+        this.servers.set('Lulu', new Server('Lulu', "Pif plouf", "yikzea"));
+        this.servers.set('Vernon', new Server('Vernon', "[EN] Come bae", ""));
+        this.servers.set('Lynx', new Server('Lynx', "what's going on", ""));
+        this.servers.set('Britneybitch', new Server('Britneybitch', "Ich liebe Battleship", "lol"));
+        this.servers.set('Queen', new Server('Queen', "Radio Ga Ga", "lol"));
+        this.servers.set('God', new Server('God', "Where is Jesus ?", "Eh"));
+        this.servers.set('Hanou', new Server('Hanou', "Ich liebe Battleship", ""));
+        this.servers.set('CoffeeShop', new Server('CoffeeShop', "GIMME COFFEE", "lol"));
+        this.servers.set('PepeTheFrog', new Server('PepeTheFrog', "Ich liebe Battleship", "lol"));
+        this.servers.set('Batman', new Server('Batman', "I'm Batman", "batcave"));
+        this.servers.set('SpongeBob', new Server('SpongeBob', "FUUUNNN", ""));
+
     }
 
     /**
@@ -26,14 +39,19 @@ class ServerList {
      * @param {Socket} socket Client asking for servers
      */
     getServers({amount, at = 0}, socket) {
-        let servers = this.servers.slice(at, at + amount).map(server => {
+        let servers = [];
+        const iterator = this.servers.values();
+
+        for (const value of iterator) {
+            servers.push(value);
+        }
+        servers = servers.splice(at, at + amount).map(server => {
             return {
                 id: server.id,
                 name: server.name,
                 usePassword: server.password !== "" ? true : false
             }
         });
-
         socket.emit('GetServersList', servers);
     }
 
@@ -45,23 +63,6 @@ class ServerList {
         const server = this.servers.get(rooms.find(room => room.match(REGEXSERVER)));
         if (!server) return undefined;
         return server.players;
-    }
-
-    /**
-     * @param {Socket} socket 
-     */
-    refreshServersList(socket = undefined) {
-        let servers = Array();
-
-        this.servers.forEach((value, key) => {
-            servers.push({
-                id: value.id,
-                name: value.name,
-                usePassword: value.password !== "" ? true : false,
-            });
-        });
-        if (!socket) io.to('refreshServersList').emit(servers);
-        else if (socket instanceof Socket) socket.emit('refreshServersList', servers);
     }
 
     /**
@@ -101,7 +102,7 @@ class Server {
      * @param {String} password
      * @constructs Server
      */
-    constructor({id}, name = "default", password = "")
+    constructor(id, name = "default", password = "")
     {
         /** @private */
         this.id = `game-${uuidv4()}`;
