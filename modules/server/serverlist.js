@@ -17,13 +17,22 @@ class ServerList {
         /** @private */
         this.servers = new Map();
 
-        this.refreshInterval = setInterval(this.RefreshServersList.bind(this), 10000);
+        this.refreshInterval = setInterval(this.refreshServersList.bind(this), 10000);
+    }
+
+    /**
+     * 
+     * @param {Number} amount Number of servers to be retrieved
+     * @param {Number} at Where the slice should start
+     */
+    getServers(amount, at = 0) {
+        return this.servers.slice(at, at + amount);
     }
 
     /**
      * @param {Array} rooms
      */
-    GetPlayers({rooms}) {
+    getPlayers({rooms}) {
         if (typeof rooms !== 'object') return undefined;
         const server = this.servers.get(rooms.find(room => room.match(REGEXSERVER)));
         if (!server) return undefined;
@@ -33,7 +42,7 @@ class ServerList {
     /**
      * @param {Socket} socket 
      */
-    RefreshServersList(socket = undefined) {
+    refreshServersList(socket = undefined) {
         let servers = Array();
 
         this.servers.forEach((value, key) => {
@@ -43,8 +52,15 @@ class ServerList {
                 usePassword: value.password !== "" ? true : false,
             });
         });
-        if (!socket) io.to('RefreshServersList').emit(servers);
-        else if (socket instanceof Socket) socket.emit('RefreshServersList', servers);
+        if (!socket) io.to('refreshServersList').emit(servers);
+        else if (socket instanceof Socket) socket.emit('refreshServersList', servers);
+    }
+
+    joinServer(serverId, socket) {
+        let server = this.servers.get(serverId);
+        
+        if (!server) return;
+        server.join(socket);
     }
 }
 
@@ -56,7 +72,7 @@ class Server {
     /**
      * Construct an instance of Server
      * 
-     * @param {String} id
+     * @param {String} id We use `socket.id`
      * @param {String} name
      * @param {String} password
      * @constructs Server
@@ -80,7 +96,7 @@ class Server {
     /**
      * @param {Array} rooms 
      */
-    IsPlayerAlreadyInAGame(rooms) {
+    isPlayerAlreadyInAGame(rooms) {
         if (typeof rooms !== 'object') return undefined;
         return rooms.some(room => room.match(REGEXSERVER));
     }
@@ -88,17 +104,36 @@ class Server {
     /**
     * @param {Socket} socket
     */
-    AddPlayer(socket) {
+    addPlayer(socket) {
         if (socket instanceof Socket) return;
-        if (this.IsPlayerAlreadyInAGame(socket.rooms)) return;
+        if (this.isPlayerAlreadyInAGame(socket.rooms)) return;
         this.players.push(socket.id);
         socket.join(this.id);
+    }
+
+    join(socket) {
+        if (!socket) return;
+        if (!isPlayerAlreadyInAGame(socket.rooms)) return;
+        this.addPlayer(socket);
+        console.log(`[Server]{this.id} Player ${socket.id} try to join the session.`);
     }
 
     toString()
     {
         return `[Server] UID: ${this.id} | name: ${this.name} | pwd: ${this.password} | Hoster: ${this.hoster}`;
     }
+}
+
+/**
+ * Add events for listening on serverlist
+ * updates.
+ * 
+ * @param {Socket} socket
+ */
+function listenServerList(socket) {
+    socket
+        .once('InitServerList', () => socket.emit('InitServerList', gServerList.getServers(10)))
+        .on('JoinServer', (data) => gServerList.joinServer(data));
 }
 
 const gServerList = new ServerList();
